@@ -31,8 +31,9 @@ elif [[ -d /work ]]; then
     . $MODULESHOME/init/sh
     PLATFORM=orion
 else
-    echo "unknown PLATFORM"
-    exit 9
+    PLATFORM=aws
+    #echo "unknown PLATFORM"
+    #exit 9
 fi
 
 #cd to location of script
@@ -93,21 +94,29 @@ fi
 # If build directory already exists, offer a choice
 BUILD_DIR=${MYDIR}/build
 
+clean_dir () {
+
+    local existing_dir
+    existing_dir=$1
+    while true; do
+      echo "Build directory (${BUILD_DIR}) already exists! Please choose what to do:"
+      echo ""
+      echo "[R]emove the existing directory"
+      echo "[C]ontinue building in the existing directory"
+      echo "[Q]uit this build script"
+      read -p "Choose an option (R/C/Q):" choice
+      case $choice in
+        [Rr]* ) rm -rf ${BUILD_DIR}; break;;
+        [Cc]* ) break;;
+        [Qq]* ) exit;;
+        * ) echo "Invalid option selected.\n";;
+      esac
+    done
+
+}
+
 if [ -d "${BUILD_DIR}" ]; then
-  while true; do
-    echo "Build directory (${BUILD_DIR}) already exists! Please choose what to do:"
-    echo ""
-    echo "[R]emove the existing directory"
-    echo "[C]ontinue building in the existing directory"
-    echo "[Q]uit this build script"
-    read -p "Choose an option (R/C/Q):" choice
-    case $choice in
-      [Rr]* ) rm -rf ${BUILD_DIR}; break;;
-      [Cc]* ) break;;
-      [Qq]* ) exit;;
-      * ) echo "Invalid option selected.\n";;
-    esac
-  done
+  clean_dir ${BUILD_DIR}
 fi
 
 # Source the README file for this platform/compiler combination, then build the code
@@ -123,11 +132,14 @@ cd ${MYDIR}/src/gsi
 cp ${MYDIR}/src/gsi/build/bin/gsi.x ${MYDIR}/bin/gsi.x
 
 . ${MYDIR}/${ENV_FILE}_DA
-cd ${MYDIR}/src/rrfs_utl
-mkdir -p build
-cd build
+BUILD_DIR=${MYDIR}/src/rrfs_utl/build
+if [ -d ${BUILD_DIR} ] ; then
+  clean_dir ${BUILD_DIR}
+fi  
+mkdir -p ${BUILD_DIR}
+cd ${BUILD_DIR}
 cmake ..
-make -j ${BUILD_JOBS:-4}
+make -j ${BUILD_JOBS:-1}
 mkdir -p ${MYDIR}/bin
 cp ./bin/* ${MYDIR}/bin/.
 
